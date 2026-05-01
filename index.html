@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexra.ai - AI Tutor</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 40px auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 5px 0 0 0;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #34495e;
+    }
+
+    select,
+    textarea {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 120px;
+    }
+
+    button {
+      background: #e74c3c;
+      color: white;
+      padding: 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #c0392b;
+    }
+
+    button:disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    .answer-box {
+      margin-top: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      min-height: 180px;
+      border: 1px solid #eee;
+      position: relative;
+    }
+
+    .answer-header {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .answer-text {
+      font-size: 17px;
+      line-height: 1.6;
+      color: #2c3e50;
+      white-space: pre-wrap;
+    }
+
+    .typing {
+      color: #3498db;
+      font-style: italic;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✨ Nexra.ai</h1>
+      <p>Your Intelligent School Tutor</p>
+    </div>
+
+    <div class="content">
+      <div class="input-group">
+        <label>Student Class</label>
+        <select id="studentClass">
+          <option value="12">Class 12</option>
+          <option value="11">Class 11</option>
+          <option value="10">Class 10</option>
+          <option value="9">Class 9</option>
+          <option value="8" selected>Class 8</option>
+          <option value="7">Class 7</option>
+          <option value="6">Class 6</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Ask your question</label>
+        <textarea id="question" placeholder="Type your question here..."></textarea>
+      </div>
+
+      <button id="askBtn" onclick="startStreaming()">Ask Nexra.ai</button>
+
+      <div class="answer-box" id="answerBox">
+        <div class="answer-header">Nexra.ai Answer:</div>
+        <div class="answer-text" id="answerText">Your answer will appear here in real-time...</div>
+      </div>
+
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    let isGenerating = false;
+
+    async function startStreaming() {
+      const question = document.getElementById("question").value.trim();
+      const studentClass = document.getElementById("studentClass").value;
+      const answerText = document.getElementById("answerText");
+      const status = document.getElementById("status");
+      const button = document.getElementById("askBtn");
+
+      if (!question) {
+        alert("Please type a question!");
+        return;
+      }
+
+      if (isGenerating) return;
+
+      // Reset UI
+      isGenerating = true;
+      button.disabled = true;
+      button.textContent = "Generating...";
+      answerText.innerHTML = '<span class="typing">Thinking</span>';
+      status.textContent = "Streaming response...";
+
+      const payload = {
+        userId: "user_" + Date.now(),
+        studentClass: parseInt(studentClass),
+        text: question
+      };
+
+      try {
+        const response = await fetch("http://192.168.0.157:8001/ask/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Server error");
+
+        const reader = response.body.getReader();
+
+        const decoder = new TextDecoder();
+        let fullAnswer = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullAnswer += chunk;
+
+          answerText.textContent = fullAnswer + "▌";
+        }
+
+        // ✅ Final clean output (remove cursor)
+        answerText.textContent = fullAnswer;
+
+
+      } catch (error) {
+        console.error(error);
+        answerText.innerHTML = `<span style="color:red;">Error: Could not connect to Nexra.ai server.<br>Make sure your backend is running.</span>`;
+      } finally {
+        isGenerating = false;
+        button.disabled = false;
+        button.textContent = "Ask Nexra.ai";
+        status.textContent = "";
+      }
+    }
+
+    // Allow pressing Enter to submit
+    document.getElementById("question").addEventListener("keypress", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        startStreaming();
+      }
+    });
+  </script>
+</body>
+
+</html>
