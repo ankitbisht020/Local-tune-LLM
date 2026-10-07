@@ -1,6 +1,8 @@
 fastapi>=0.111.0
-uvicorn[standard]>=0.23.0
-transformers>=4.35.0
-accelerate>=0.22.0
-bitsandbytes>=0.41.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.5.0
+transformers>=4.43.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
+sentencepiece>=0.2.0
 torch>=2.1.0
